@@ -55,6 +55,43 @@ body {
   gap: 20px;
 }
 
+.section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.section-nav-item {
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.section-nav-item:hover {
+  color: var(--text);
+  border-color: rgba(255,255,255,0.2);
+}
+
+.feature-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feature-title {
+  font-size: 0.82rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ff8a66;
+  font-weight: 700;
+}
+
 /* ─── Header ────────────────────────────────────────────── */
 .header { text-align: center; margin-bottom: 10px; }
 
@@ -244,6 +281,163 @@ body {
 /* ─── Options ────────────────────────────────────────────── */
 .section-title { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
 
+/* ─── Focus Mode ─────────────────────────────────────────── */
+.focus-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+}
+
+.focus-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.focus-header .section-title { margin-bottom: 0; }
+
+.focus-chip {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.focus-chip.break {
+  color: #f59e0b;
+  border-color: rgba(245,158,11,0.35);
+  background: rgba(245,158,11,0.12);
+}
+
+.focus-main {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  padding: 6px 0 14px;
+}
+
+.focus-timer {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.focus-sub {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.focus-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.focus-actions .btn-primary {
+  min-width: 110px;
+  justify-content: center;
+}
+
+.focus-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.focus-select {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.focus-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.focus-audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.volume-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+#soundVolume {
+  accent-color: var(--accent);
+  width: 150px;
+}
+
+.focus-check {
+  color: var(--muted);
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.focus-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.focus-stat {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.focus-stat-label {
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.stream-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+
+.stream-sub {
+  color: var(--muted);
+  font-size: 0.84rem;
+  margin-bottom: 12px;
+}
+
+.stream-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stream-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.stream-status.live {
+  color: var(--success);
+}
+
 .options-grid { display: flex; flex-direction: column; gap: 20px; }
 .option-label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--muted); margin-bottom: 10px; }
 
@@ -388,4 +582,10 @@ body {
   .video-info { flex-direction: column; }
   .thumb-wrap { width: 100%; height: 180px; }
   .toggle-group { flex-direction: column; }
+  .section-nav { justify-content: flex-start; }
+  .focus-actions { flex-direction: column; }
+  .focus-actions .btn-primary,
+  .focus-actions .btn-sm { width: 100%; justify-content: center; }
+  .focus-audio-controls { flex-direction: column; align-items: flex-start; }
+  #soundVolume { width: 180px; }
 }

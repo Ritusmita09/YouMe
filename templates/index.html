@@ -26,76 +26,175 @@
       <p class="tagline">YouTube Video & Playlist Downloader</p>
     </header>
 
-    <!-- URL Input Card -->
-    <div class="card input-card">
-      <div class="input-wrapper">
-        <span class="input-icon">🔗</span>
-        <input
-          type="text"
-          id="urlInput"
-          placeholder="Paste YouTube URL – video or playlist…"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button id="fetchBtn" class="btn btn-primary" onclick="fetchInfo()">
-          <span class="btn-text">Fetch</span>
-          <span class="btn-loader hidden"></span>
+    <nav class="section-nav">
+      <a href="#section-focus" class="section-nav-item">1. Lofi + Pomodoro</a>
+      <a href="#section-download" class="section-nav-item">2. YT Download</a>
+      <a href="#section-stream" class="section-nav-item">3. Music Stream</a>
+    </nav>
+
+    <section id="section-focus" class="feature-section">
+      <div class="feature-title">1. Lofi + Pomodoro</div>
+
+      <!-- Focus Mode Card -->
+      <div class="card focus-card" id="focusCard">
+        <div class="focus-header">
+          <h3 class="section-title">Focus Mode</h3>
+          <span class="focus-chip" id="focusPhase">Focus</span>
+        </div>
+
+        <div class="focus-main">
+          <div class="focus-timer" id="focusTimer">25:00</div>
+          <p class="focus-sub" id="focusStatus">Ready for a 25-minute Pomodoro.</p>
+        </div>
+
+        <div class="focus-actions">
+          <button class="btn btn-primary" id="focusStartBtn">Start</button>
+          <button class="btn btn-sm" id="focusResetBtn">Reset</button>
+        </div>
+
+        <div class="focus-grid">
+          <label class="option-label" for="soundMode">Ambient Sound</label>
+          <select id="soundMode" class="focus-select">
+            <option value="lofi">Lofi Beats</option>
+            <option value="rain">Rain Ambience</option>
+            <option value="cafe">Cafe Ambience</option>
+            <option value="pink">Pink Noise</option>
+            <option value="white">White Noise</option>
+            <option value="binaural">Binaural Beats</option>
+          </select>
+
+          <div class="focus-audio-controls">
+            <button class="btn btn-sm" id="soundToggleBtn">Play Sound</button>
+            <label class="volume-wrap" for="soundVolume">
+              <span>Volume</span>
+              <input type="range" id="soundVolume" min="0" max="100" value="35" />
+            </label>
+          </div>
+
+          <label class="focus-check">
+            <input type="checkbox" id="autoSound" checked />
+            Auto-play sound during focus
+          </label>
+        </div>
+
+        <div class="focus-stats">
+          <div class="focus-stat">
+            <span class="focus-stat-label">Sessions Today</span>
+            <strong id="focusSessions">0</strong>
+          </div>
+          <div class="focus-stat">
+            <span class="focus-stat-label">Cycle</span>
+            <strong id="focusCycle">Work</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-download" class="feature-section">
+      <div class="feature-title">2. YT Download</div>
+
+      <!-- URL Input Card -->
+      <div class="card input-card">
+        <div class="input-wrapper">
+          <span class="input-icon">🔗</span>
+          <input
+            type="text"
+            id="urlInput"
+            placeholder="Paste YouTube URL – video or playlist…"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="fetchBtn" class="btn btn-primary" onclick="fetchInfo()">
+            <span class="btn-text">Fetch</span>
+            <span class="btn-loader hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video Info Card -->
+      <div class="card info-card hidden" id="infoCard">
+        <div class="video-info" id="videoInfo"></div>
+      </div>
+
+      <!-- Options Card -->
+      <div class="card options-card hidden" id="optionsCard">
+        <h3 class="section-title">Download Options</h3>
+        <div class="options-grid">
+
+          <!-- Format Toggle -->
+          <div class="option-group">
+            <label class="option-label">Format</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" id="videoBtn" onclick="setFormat('video')">
+                🎬 Video (MP4)
+              </button>
+              <button class="toggle-btn" id="audioBtn" onclick="setFormat('audio')">
+                🎵 Audio (MP3)
+              </button>
+            </div>
+          </div>
+
+          <!-- Resolution -->
+          <div class="option-group" id="resGroup">
+            <label class="option-label">Resolution</label>
+            <div class="resolution-grid" id="resGrid">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <button class="btn btn-download" id="downloadBtn" onclick="startDownload()">
+          ⬇ Download Now
         </button>
       </div>
-    </div>
 
-    <!-- Video Info Card -->
-    <div class="card info-card hidden" id="infoCard">
-      <div class="video-info" id="videoInfo"></div>
-    </div>
-
-    <!-- Options Card -->
-    <div class="card options-card hidden" id="optionsCard">
-      <h3 class="section-title">Download Options</h3>
-      <div class="options-grid">
-
-        <!-- Format Toggle -->
-        <div class="option-group">
-          <label class="option-label">Format</label>
-          <div class="toggle-group">
-            <button class="toggle-btn active" id="videoBtn" onclick="setFormat('video')">
-              🎬 Video (MP4)
-            </button>
-            <button class="toggle-btn" id="audioBtn" onclick="setFormat('audio')">
-              🎵 Audio (MP3)
-            </button>
-          </div>
-        </div>
-
-        <!-- Resolution -->
-        <div class="option-group" id="resGroup">
-          <label class="option-label">Resolution</label>
-          <div class="resolution-grid" id="resGrid">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
+      <!-- Active Downloads -->
+      <div class="card downloads-card hidden" id="activeCard">
+        <h3 class="section-title">Active Downloads</h3>
+        <div id="activeDownloads"></div>
       </div>
 
-      <button class="btn btn-download" id="downloadBtn" onclick="startDownload()">
-        ⬇ Download Now
-      </button>
-    </div>
-
-    <!-- Active Downloads -->
-    <div class="card downloads-card hidden" id="activeCard">
-      <h3 class="section-title">Active Downloads</h3>
-      <div id="activeDownloads"></div>
-    </div>
-
-    <!-- Files Library -->
-    <div class="card library-card" id="libraryCard">
-      <div class="library-header">
-        <h3 class="section-title">Downloaded Files</h3>
-        <button class="btn btn-sm" onclick="loadFiles()">↺ Refresh</button>
+      <!-- Files Library -->
+      <div class="card library-card" id="libraryCard">
+        <div class="library-header">
+          <h3 class="section-title">Downloaded Files</h3>
+          <button class="btn btn-sm" onclick="loadFiles()">↺ Refresh</button>
+        </div>
+        <div id="fileList"><p class="empty-msg">No files yet.</p></div>
       </div>
-      <div id="fileList"><p class="empty-msg">No files yet.</p></div>
-    </div>
+    </section>
+
+    <section id="section-stream" class="feature-section">
+      <div class="feature-title">3. Music Stream</div>
+
+      <div class="card stream-card" id="streamCard">
+        <h3 class="section-title">Simple Stream Player</h3>
+        <p class="stream-sub">Minimal ad-free internet radio streams for background listening.</p>
+
+        <div class="stream-grid">
+          <label class="option-label" for="streamMode">Choose Stream</label>
+          <select id="streamMode" class="focus-select">
+            <option value="https://ice1.somafm.com/groovesalad-128-mp3">Groove Salad (Ambient)</option>
+            <option value="https://ice1.somafm.com/dronezone-128-mp3">Drone Zone (Space Ambient)</option>
+            <option value="https://ice1.somafm.com/defcon-128-mp3">DEF CON Radio (Electronic)</option>
+            <option value="https://ice1.somafm.com/illstreet-128-mp3">Illinois Street Lounge</option>
+          </select>
+
+          <div class="focus-audio-controls">
+            <button class="btn btn-sm" id="streamToggleBtn">Play Stream</button>
+            <label class="volume-wrap" for="streamVolume">
+              <span>Volume</span>
+              <input type="range" id="streamVolume" min="0" max="100" value="40" />
+            </label>
+          </div>
+
+          <p class="stream-status" id="streamStatus">Stream is stopped.</p>
+        </div>
+
+        <audio id="streamAudio" preload="none"></audio>
+      </div>
+    </section>
 
   </div>
 

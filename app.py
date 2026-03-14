@@ -272,13 +272,7 @@ def login():
             "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
             503,
         )
-    return (
-        '<html><body style="font-family:Arial;padding:24px">'
-        '<h2>YouMe Login</h2>'
-        '<p>Please sign in with Google to continue.</p>'
-        '<a href="/auth/google">Continue with Google</a>'
-        '</body></html>'
-    )
+    return render_template("login.html")
 
 
 @app.route("/logout")

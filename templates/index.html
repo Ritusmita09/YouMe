@@ -169,6 +169,19 @@
               <span>Auto-play during sessions</span>
             </label>
 
+            <div class="focus-player" id="focusTrackPlayer" hidden>
+              <div class="focus-player-head">
+                <span class="focus-player-kicker">Now Playing</span>
+                <span class="focus-player-title" id="focusTrackTitle">No track selected</span>
+              </div>
+              <div class="focus-player-controls">
+                <button class="btn btn-icon-round" id="focusTrackToggleBtn" type="button" onclick="toggleTrackPlayback()">▶</button>
+                <span class="focus-time" id="focusTrackCurrent">0:00</span>
+                <input type="range" id="focusTrackSeek" min="0" max="100" step="0.1" value="0" class="dash-range"/>
+                <span class="focus-time" id="focusTrackDuration">0:00</span>
+              </div>
+            </div>
+
             <audio id="focusTrackAudio" preload="none"></audio>
           </div>
 
@@ -434,6 +447,6 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-  <script src="/static/script.js?v=20260314c"></script>
+  <script src="/static/script.js?v=20260315a"></script>
 </body>
 </html>

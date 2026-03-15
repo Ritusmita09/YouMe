@@ -5,7 +5,10 @@ let currentResolutions = [];
 let selectedResolution = "best";
 let isAudioOnly = false;
 let activePolls = {};            // task_id → interval
-let handledStreamTasks = {};     // task_id → true
+let browserExtractorClient = null;
+let browserExtractorPromise = null;
+let trackSeekDragging = false;
+let currentTrackMeta = { title: "", sourceUrl: "" };
 
 /* ─── Navigation ────────────────────────────────────────── */
 function showSection(name) {
@@ -125,6 +128,149 @@ function formatViews(n) {
   if (n >= 1_000_000) return `${(n/1_000_000).toFixed(1)}M views`;
   if (n >= 1_000) return `${(n/1_000).toFixed(0)}K views`;
   return `${n} views`;
+}
+
+function extractYouTubeVideoId(input) {
+  if (!input) return null;
+  try {
+    const parsed = new URL(input);
+    if (parsed.hostname.includes("youtu.be")) {
+      return parsed.pathname.replace("/", "").trim() || null;
+    }
+    if (parsed.hostname.includes("youtube.com") || parsed.hostname.includes("music.youtube.com")) {
+      const vid = parsed.searchParams.get("v");
+      if (vid) return vid;
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const shortType = parts[0];
+      if ((shortType === "shorts" || shortType === "embed") && parts[1]) {
+        return parts[1];
+      }
+    }
+  } catch (_) {
+    // ignore parser errors and try regex fallback
+  }
+
+  const m = String(input).match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function formatPlayerTime(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return "0:00";
+  const whole = Math.floor(value);
+  const mins = Math.floor(whole / 60);
+  const secs = whole % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+async function getBrowserExtractorClient() {
+  if (browserExtractorClient) return browserExtractorClient;
+  if (!browserExtractorPromise) {
+    browserExtractorPromise = (async () => {
+      const mod = await import("https://esm.sh/youtubei.js@10.5.0?bundle");
+      const Innertube = mod.Innertube || mod.default?.Innertube || mod.default;
+      if (!Innertube || typeof Innertube.create !== "function") {
+        throw new Error("Could not initialize browser extractor");
+      }
+      browserExtractorClient = await Innertube.create({
+        generate_session_locally: true,
+        fetch: window.fetch.bind(window),
+      });
+      return browserExtractorClient;
+    })();
+  }
+  return browserExtractorPromise;
+}
+
+function getAudioCandidates(streamingData) {
+  const adaptive = streamingData?.adaptive_formats || streamingData?.adaptiveFormats || [];
+  const formats = streamingData?.formats || [];
+  const merged = [...adaptive, ...formats];
+
+  return merged
+    .filter(f => {
+      const mime = String(f.mime_type || f.mimeType || "");
+      return mime.includes("audio/");
+    })
+    .map(f => {
+      const bitrate = Number(f.bitrate || f.audio_bitrate || f.audioBitrate || 0);
+      const url = f.url || f.deciphered_url || f.decipheredUrl || "";
+      return { bitrate, url };
+    })
+    .filter(f => !!f.url);
+}
+
+async function resolveTrackStreamInBrowser(trackUrl) {
+  if (focusTrackCache[trackUrl]) {
+    return {
+      streamUrl: focusTrackCache[trackUrl],
+      title: currentTrackMeta.title || "Track",
+    };
+  }
+
+  const videoId = extractYouTubeVideoId(trackUrl);
+  if (!videoId) {
+    throw new Error("Invalid YouTube URL");
+  }
+
+  const client = await getBrowserExtractorClient();
+  const info = await client.getBasicInfo(videoId);
+  const streamingData =
+    info?.streaming_data ||
+    info?.streamingData ||
+    info?.basic_info?.streaming_data ||
+    info?.basic_info?.streamingData;
+
+  const candidates = getAudioCandidates(streamingData).sort((a, b) => b.bitrate - a.bitrate);
+  if (!candidates.length) {
+    throw new Error("No playable audio stream found for this track");
+  }
+
+  const best = candidates[0];
+  focusTrackCache[trackUrl] = best.url;
+  const resolvedTitle = info?.basic_info?.title || info?.video_details?.title || "Track";
+  return { streamUrl: best.url, title: resolvedTitle };
+}
+
+function updateTrackPlayerUI() {
+  const els = focusEls();
+  if (!els.trackAudio || !els.trackPlayer) return;
+
+  const hasTrack = !!els.trackAudio.src;
+  els.trackPlayer.hidden = !hasTrack;
+  if (!hasTrack) {
+    if (els.trackCurrent) els.trackCurrent.textContent = "0:00";
+    if (els.trackDuration) els.trackDuration.textContent = "0:00";
+    if (els.trackSeek) els.trackSeek.value = "0";
+    if (els.trackToggle) els.trackToggle.textContent = "▶";
+    return;
+  }
+
+  const duration = Number.isFinite(els.trackAudio.duration) ? els.trackAudio.duration : 0;
+  const current = Number.isFinite(els.trackAudio.currentTime) ? els.trackAudio.currentTime : 0;
+  const ratio = duration > 0 ? (current / duration) * 100 : 0;
+
+  if (els.trackCurrent) els.trackCurrent.textContent = formatPlayerTime(current);
+  if (els.trackDuration) els.trackDuration.textContent = formatPlayerTime(duration);
+  if (els.trackSeek && !trackSeekDragging) els.trackSeek.value = String(ratio);
+  if (els.trackToggle) els.trackToggle.textContent = els.trackAudio.paused ? "▶" : "⏸";
+}
+
+function setTrackTitleLabel(label) {
+  const titleEl = document.getElementById("focusTrackTitle");
+  if (!titleEl) return;
+  const clean = (label || "Track").replace(/^⭐\s*/, "").replace(/^🎵\s*/, "").trim();
+  titleEl.textContent = clean || "Track";
+}
+
+async function toggleTrackPlayback() {
+  const els = focusEls();
+  if (!els.trackAudio || !els.trackAudio.src) return;
+  if (els.trackAudio.paused) {
+    await els.trackAudio.play();
+  } else {
+    els.trackAudio.pause();
+  }
 }
 
 /* ─── Fetch Info ─────────────────────────────────────────── */
@@ -317,15 +463,6 @@ function updateDownloadItem(taskId, task) {
   else if (task.status === "done") {
     statusEl.textContent = "✓ Done";
     barEl.classList.add("done");
-    if (task.stream_url && !handledStreamTasks[taskId]) {
-      handledStreamTasks[taskId] = true;
-      const a = document.createElement("a");
-      a.href = task.stream_url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.click();
-      showToast("Worker stream is ready. Opening download/stream URL...", "success");
-    }
     loadFiles();
   }
   else if (task.status === "error") {
@@ -450,6 +587,11 @@ function focusEls() {
     musicSearchBtn: document.getElementById("focusMusicSearchBtn"),
     musicDownloadBtn: document.getElementById("focusMusicDownloadBtn"),
     trackAudio: document.getElementById("focusTrackAudio"),
+    trackPlayer: document.getElementById("focusTrackPlayer"),
+    trackToggle: document.getElementById("focusTrackToggleBtn"),
+    trackSeek: document.getElementById("focusTrackSeek"),
+    trackCurrent: document.getElementById("focusTrackCurrent"),
+    trackDuration: document.getElementById("focusTrackDuration"),
   };
 }
 
@@ -885,26 +1027,29 @@ async function playFocusTrack(trackUrl) {
   focusState.audioEnabled = false;
   focusState.audioSource = null;
 
-  let streamUrl = focusTrackCache[trackUrl];
-  if (!streamUrl) {
-    const res = await fetch("/music_stream_url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: trackUrl }),
-    });
-    const data = await res.json();
-    if (data.error || !data.stream_url) {
-      throw new Error(data.error || "No stream URL");
-    }
-    streamUrl = data.stream_url;
-    focusTrackCache[trackUrl] = streamUrl;
+  const selected = Array.from(els.audioSelect?.options || []).find(opt => opt.value === `track:${trackUrl}`);
+  currentTrackMeta = {
+    title: selected?.textContent || "Track",
+    sourceUrl: trackUrl,
+  };
+  setTrackTitleLabel(currentTrackMeta.title);
+
+  const resolved = await resolveTrackStreamInBrowser(trackUrl);
+  if (!els.trackAudio.src || els.trackAudio.src !== resolved.streamUrl) {
+    els.trackAudio.src = resolved.streamUrl;
+  }
+  if (resolved.title) {
+    setTrackTitleLabel(resolved.title);
   }
 
-  els.trackAudio.src = streamUrl;
   els.trackAudio.volume = Number(els.volume?.value || 35) / 100;
   await els.trackAudio.play();
   focusState.audioEnabled = true;
   focusState.audioSource = "track";
+  if (els.trackPlayer) {
+    els.trackPlayer.hidden = false;
+  }
+  updateTrackPlayerUI();
   updateFocusUI();
 }
 
@@ -912,6 +1057,15 @@ async function playSelectedFocusAudio() {
   const selected = getSelectedFocusAudio();
   if (selected.type === "ambient") {
     stopFocusTrack();
+    const els = focusEls();
+    if (els.trackAudio) {
+      els.trackAudio.removeAttribute("src");
+      els.trackAudio.load();
+    }
+    if (els.trackPlayer) {
+      els.trackPlayer.hidden = true;
+    }
+    setTrackTitleLabel("No track selected");
     playAmbient(selected.mode);
     return;
   }
@@ -1093,6 +1247,8 @@ function bindFocusEvents() {
   // are handled via inline onclick in HTML — only bind non-inline events here.
 
   els.audioSelect.addEventListener("change", () => {
+    updateTrackPlayerUI();
+    updateLofiButtons();
     if (focusState.audioEnabled) playSelectedFocusAudio();
   });
 
@@ -1118,12 +1274,47 @@ function bindFocusEvents() {
       focusState.audioSource = null;
       updateFocusUI();
     }
+    updateTrackPlayerUI();
   });
 
   els.trackAudio?.addEventListener("playing", () => {
     focusState.audioEnabled = true;
     focusState.audioSource = "track";
     updateFocusUI();
+    updateTrackPlayerUI();
+  });
+
+  els.trackAudio?.addEventListener("timeupdate", () => {
+    updateTrackPlayerUI();
+  });
+
+  els.trackAudio?.addEventListener("loadedmetadata", () => {
+    updateTrackPlayerUI();
+  });
+
+  els.trackAudio?.addEventListener("ended", () => {
+    updateTrackPlayerUI();
+  });
+
+  els.trackSeek?.addEventListener("input", () => {
+    trackSeekDragging = true;
+    if (!els.trackAudio || !Number.isFinite(els.trackAudio.duration)) return;
+    const ratio = Number(els.trackSeek.value) / 100;
+    const previewTime = ratio * els.trackAudio.duration;
+    if (els.trackCurrent) {
+      els.trackCurrent.textContent = formatPlayerTime(previewTime);
+    }
+  });
+
+  els.trackSeek?.addEventListener("change", () => {
+    if (!els.trackAudio || !Number.isFinite(els.trackAudio.duration)) {
+      trackSeekDragging = false;
+      return;
+    }
+    const ratio = Number(els.trackSeek.value) / 100;
+    els.trackAudio.currentTime = ratio * els.trackAudio.duration;
+    trackSeekDragging = false;
+    updateTrackPlayerUI();
   });
 }
 

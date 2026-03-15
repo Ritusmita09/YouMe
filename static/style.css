@@ -1288,6 +1288,51 @@ body {
   width: 14px; height: 14px;
 }
 
+.focus-player {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-hi);
+}
+
+.focus-player-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.focus-player-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.focus-player-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.focus-player-controls {
+  display: grid;
+  grid-template-columns: auto auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.focus-time {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  min-width: 2.6em;
+  text-align: center;
+}
+
 /* Notes Card */
 .notes-area {
   width: 100%;
@@ -1625,6 +1670,13 @@ body {
   .theme-picker { grid-template-columns: repeat(2, 1fr); }
   .audio-controls-row { flex-direction: column; align-items: flex-start; }
   .dash-range { width: 100%; }
+  .focus-player-controls {
+    grid-template-columns: auto auto 1fr;
+  }
+  .focus-player-controls .focus-time:last-child {
+    grid-column: 3;
+    justify-self: end;
+  }
   .crop-controls {
     flex-direction: column;
     align-items: flex-start;

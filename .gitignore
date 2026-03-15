@@ -41,3 +41,11 @@ yt-dlp.exe
 Thumbs.db
 .vscode/
 .idea/
+
+# Node/Next.js artifacts
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*

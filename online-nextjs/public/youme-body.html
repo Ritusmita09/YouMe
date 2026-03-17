@@ -1,0 +1,383 @@
+<div class="bg-layer" aria-hidden="true">
+  <div class="bg-orb orb1"></div>
+  <div class="bg-orb orb2"></div>
+  <div class="bg-orb orb3"></div>
+</div>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon-wrap">▶</div>
+      <span class="brand-name">You<span class="brand-accent">Me</span></span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="focus" onclick="showSection('focus')">
+        <span class="nav-label">Focus Mode</span>
+      </button>
+      <button class="nav-item" data-section="library" onclick="showSection('library')">
+        <span class="nav-label">Library</span>
+      </button>
+      <button class="nav-item" data-section="watchlist" onclick="showSection('watchlist')">
+        <span class="nav-label">Watchlist</span>
+      </button>
+      <button class="nav-item" data-section="planner" onclick="showSection('planner')">
+        <span class="nav-label">Planner</span>
+      </button>
+      <button class="nav-item" data-section="admin" onclick="showSection('admin')">
+        <span class="nav-label">Admin</span>
+      </button>
+      <button class="nav-item" data-section="settings" onclick="showSection('settings')">
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+  </aside>
+
+  <header class="mobile-topbar">
+    <span class="mobile-brand">You<span class="brand-accent">Me</span></span>
+    <nav class="mobile-nav">
+      <button class="mob-tab active" data-section="focus" onclick="showSection('focus')">
+        <span>Focus</span>
+      </button>
+      <button class="mob-tab" data-section="library" onclick="showSection('library')">
+        <span>Library</span>
+      </button>
+      <button class="mob-tab" data-section="watchlist" onclick="showSection('watchlist')">
+        <span>List</span>
+      </button>
+      <button class="mob-tab" data-section="planner" onclick="showSection('planner')">
+        <span>Plan</span>
+      </button>
+      <button class="mob-tab" data-section="admin" onclick="showSection('admin')">
+        <span>Admin</span>
+      </button>
+      <button class="mob-tab" data-section="settings" onclick="showSection('settings')">
+        <span>Settings</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="main-content">
+    <section id="sec-focus" class="app-section active">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Focus Mode</h1>
+          <p class="sec-sub">Pomodoro timer · quick notes</p>
+        </div>
+      </div>
+
+      <div class="focus-layout">
+        <div class="card timer-card anim-stagger-2">
+          <div class="timer-top">
+            <select id="pomodoroMode" class="dash-select compact" onchange="setPomodoroMode(this.value)">
+              <option value="25-5">25 / 5 · Classic</option>
+              <option value="50-10">50 / 10 · Deep Work</option>
+            </select>
+            <span class="phase-badge" id="focusPhase">Focus</span>
+          </div>
+
+          <div class="timer-ring-wrap">
+            <svg class="timer-ring-svg" viewBox="0 0 200 200" aria-hidden="true">
+              <circle class="ring-track" cx="100" cy="100" r="84"/>
+              <circle class="ring-fill" id="timerRing" cx="100" cy="100" r="84"/>
+            </svg>
+            <div class="timer-center">
+              <span class="timer-digits" id="focusTimer">25:00</span>
+              <span class="timer-cycle" id="focusCycle">Work</span>
+            </div>
+          </div>
+
+          <p class="timer-status-text" id="focusStatus">Ready for a 25 / 5 Pomodoro.</p>
+
+          <div class="timer-btn-row">
+            <button class="btn btn-primary btn-lg" id="focusStartBtn" onclick="toggleFocusTimer()">Start</button>
+            <button class="btn btn-ghost" id="focusResetBtn" onclick="resetFocusTimer()">Reset</button>
+          </div>
+
+          <div class="session-row">
+            <div class="stat-pill">
+              <span class="stat-num" id="focusSessions">0</span>
+              <span class="stat-lbl">sessions today</span>
+            </div>
+            <div class="stat-pill" style="margin-left:8px">
+              <span class="stat-num" id="focusCycleLabel">Work</span>
+              <span class="stat-lbl">cycle</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card audio-card anim-stagger-3">
+          <div class="card-head">
+            <h3 class="card-title">My Lofi Upload</h3>
+          </div>
+
+          <div id="lofiDropZone" class="lofi-drop-zone">
+            <input type="file" id="lofiFileInput" accept="audio/*" style="display:none;" />
+            <p class="drop-zone-text">Drag and drop MP3/M4A/WAV here</p>
+            <p class="drop-zone-sub">or use Choose File</p>
+          </div>
+
+          <div class="audio-controls-row" style="margin-top:12px;">
+            <button class="btn btn-ghost-sm" id="lofiPickBtn" type="button">Choose File</button>
+            <button class="btn btn-accent-sm" id="lofiPlayBtn" type="button">Play</button>
+            <button class="btn btn-ghost-sm" id="lofiClearBtn" type="button">Remove</button>
+          </div>
+
+          <div class="audio-controls-row">
+            <span class="vol-icon">🔊</span>
+            <input type="range" id="lofiVolume" min="0" max="100" value="35" class="dash-range" />
+          </div>
+
+          <label class="check-label">
+            <input type="checkbox" id="lofiAutoPlay" checked />
+            <span>Auto-play during focus sessions</span>
+          </label>
+
+          <p class="timer-status-text" id="lofiNowPlaying" style="text-align:left; margin-top:10px; margin-bottom:0; min-height:auto;">No file selected.</p>
+          <audio id="localLofiAudio" preload="metadata"></audio>
+        </div>
+
+        <div class="card notes-card anim-stagger-4">
+          <div class="card-head">
+            <h3 class="card-title">Focus Notes</h3>
+            <button class="btn btn-ghost-sm" id="focusNotepadClearBtn" type="button">Clear</button>
+          </div>
+          <textarea id="focusNotepad" class="notes-area" placeholder="Jot tasks, ideas, or reminders for this session…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-library" class="app-section">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Library</h1>
+          <p class="sec-sub">Your downloaded files</p>
+        </div>
+        <button class="btn btn-ghost-sm" onclick="loadFiles()">↺ Refresh</button>
+      </div>
+
+      <div class="lib-grid anim-stagger-2" id="fileList">
+        <p class="empty-msg">No files yet. Download something!</p>
+      </div>
+    </section>
+
+    <section id="sec-watchlist" class="app-section">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Watchlist</h1>
+          <p class="sec-sub">Track videos & learned insights</p>
+        </div>
+      </div>
+
+      <div class="card url-card anim-stagger-2">
+        <div class="url-row">
+          <span class="url-icon-glyph">🔗</span>
+          <input type="text" id="watchlistInput" class="dash-input url-input"
+            placeholder="Paste YouTube URL to track…"
+            autocomplete="off" spellcheck="false"/>
+          <button class="btn btn-primary" onclick="addWatchlistItem()">
+            <span class="btn-text">Add</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="lib-grid anim-stagger-3" id="watchlistGrid">
+        <p class="empty-msg">No watchlist items yet.</p>
+      </div>
+    </section>
+
+    <section id="sec-planner" class="app-section">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Daily Planner</h1>
+          <p class="sec-sub">Track your productivity & activities</p>
+        </div>
+      </div>
+
+      <div class="planner-layout" style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="card anim-stagger-2">
+          <h3 class="card-title" style="margin-bottom:14px">Add Activity</h3>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <input type="text" id="planActivity" class="dash-input" placeholder="Activity Name"/>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="planTime" class="dash-input" placeholder="Time (e.g., 10:00 AM)"/>
+              <input type="text" id="planPlace" class="dash-input" placeholder="Place"/>
+            </div>
+            <input type="text" id="planAfter" class="dash-input" placeholder="After which activity? (Prerequisite)"/>
+
+            <select id="planCategory" class="dash-select">
+              <option value="Studying">Studying</option>
+              <option value="Experimenting">Experimenting</option>
+              <option value="Exploring">Exploring</option>
+              <option value="Time Pass">Time Pass</option>
+            </select>
+
+            <button class="btn btn-primary" onclick="addPlannerTask()" style="margin-top:8px">Track Activity</button>
+          </div>
+        </div>
+
+        <div class="card anim-stagger-3">
+          <h3 class="card-title" style="margin-bottom:14px">Productivity Focus</h3>
+          <div id="plannerGraph" style="height:200px; display:flex; align-items:flex-end; gap:8px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+          </div>
+          <p class="card-sub" style="margin-top: 10px; text-align:center;" id="plannerScore">Score: 0</p>
+        </div>
+      </div>
+
+      <div class="card anim-stagger-4" style="margin-top:20px;">
+        <h3 class="card-title" style="margin-bottom:14px">Today's Schedule</h3>
+        <div id="plannerList" style="display:flex; flex-direction:column; gap:10px;">
+          <p class="empty-msg">No activities planned.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-admin" class="app-section">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Admin Panel</h1>
+          <p class="sec-sub">Profile info, basic account controls, and upcoming badges</p>
+        </div>
+      </div>
+
+      <div class="admin-layout">
+        <div class="card admin-profile-card anim-stagger-2">
+          <div class="admin-profile-head">
+            <div class="admin-avatar" id="adminAvatar">YM</div>
+            <div>
+              <h3 class="card-title" id="adminName">Loading...</h3>
+              <p class="card-sub" id="adminEmail">-</p>
+            </div>
+          </div>
+          <div class="admin-meta-grid">
+            <div class="admin-meta-item">
+              <span class="admin-meta-k">Account Tier</span>
+              <span class="admin-meta-v" id="adminTier">Free</span>
+            </div>
+            <div class="admin-meta-item">
+              <span class="admin-meta-k">Member Since</span>
+              <span class="admin-meta-v" id="adminMemberSince">-</span>
+            </div>
+            <div class="admin-meta-item">
+              <span class="admin-meta-k">User ID</span>
+              <span class="admin-meta-v" id="adminUserId">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card admin-basics-card anim-stagger-3">
+          <h3 class="card-title">Website Basics</h3>
+          <p class="card-sub">Common controls every app panel has (profile + usage overview).</p>
+          <div class="admin-stat-grid" id="adminStatGrid">
+            <div class="admin-stat-pill"><span class="admin-stat-n" id="adminDownloads">0</span><span class="admin-stat-l">Downloads</span></div>
+            <div class="admin-stat-pill"><span class="admin-stat-n" id="adminHabits">0</span><span class="admin-stat-l">Habits</span></div>
+            <div class="admin-stat-pill"><span class="admin-stat-n" id="adminCurrentStreak">0</span><span class="admin-stat-l">Current Streak</span></div>
+            <div class="admin-stat-pill"><span class="admin-stat-n" id="adminBestStreak">0</span><span class="admin-stat-l">Best Streak</span></div>
+          </div>
+        </div>
+
+        <div class="card admin-badges-card anim-stagger-4">
+          <div class="admin-badges-head">
+            <h3 class="card-title">Badges</h3>
+            <span class="admin-coming">Coming Soon</span>
+          </div>
+          <div class="admin-badge-grid" id="adminBadgeGrid">
+            <div class="admin-badge">Loading badges...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-settings" class="app-section">
+      <div class="sec-header anim-stagger-1">
+        <div>
+          <h1 class="sec-title">Settings</h1>
+          <p class="sec-sub">Personalize your workspace</p>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="card settings-card">
+          <h3 class="card-title">Visual Theme</h3>
+          <p class="card-sub">Themes only change colors and fonts — all features stay the same.</p>
+          <div class="theme-picker">
+            <button class="theme-opt active" data-t="batman" onclick="setTheme('batman')">
+              <div class="theme-swatch batman-swatch">
+                <span></span><span class="ac"></span>
+              </div>
+              <strong>Batman</strong>
+              <small>Dark &amp; minimal</small>
+            </button>
+
+            <button class="theme-opt" data-t="hello-kitty" onclick="setTheme('hello-kitty')">
+              <div class="theme-swatch kitty-swatch">
+                <span></span><span class="ac"></span>
+              </div>
+              <strong>Hello Kitty</strong>
+              <small>Soft pastel pink</small>
+            </button>
+
+            <button class="theme-opt" data-t="spiderman" onclick="setTheme('spiderman')">
+              <div class="theme-swatch spidey-swatch">
+                <span></span><span class="ac"></span>
+              </div>
+              <strong>Spiderman</strong>
+              <small>Red &amp; blue energy</small>
+            </button>
+
+            <button class="theme-opt" data-t="ironman" onclick="setTheme('ironman')">
+              <div class="theme-swatch ironman-swatch">
+                <span></span><span class="ac"></span>
+              </div>
+              <strong>Iron Man</strong>
+              <small>Tech red &amp; gold</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="card settings-card">
+          <h3 class="card-title">🖼️ Custom Wallpaper</h3>
+          <p class="card-sub">Drag &amp; drop an image below, or click to choose. A crop tool lets you adjust framing before applying.</p>
+
+          <div id="wallpaperDropZone" class="wallpaper-drop-zone">
+            <input type="file" id="customBgInput" accept="image/*" style="display:none;"/>
+            <div class="drop-zone-icon">🖼️</div>
+            <p class="drop-zone-text">Drag &amp; drop image here</p>
+            <p class="drop-zone-sub">or</p>
+            <label for="customBgInput" class="btn btn-primary" style="cursor:pointer;">
+              📁 Choose File
+            </label>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+            <button class="btn btn-ghost" id="clearBgBtn" onclick="clearCustomBackground()">✕ Clear Wallpaper</button>
+          </div>
+          <p class="card-sub" id="customBgFileHint" style="margin-top:8px; margin-bottom:0;">No custom image selected.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="cropModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content card crop-modal-content">
+    <h3 class="card-title">Adjust Wallpaper Crop</h3>
+    <div class="crop-controls">
+      <label for="cropAspectRatio" class="crop-label">Crop Ratio</label>
+      <select id="cropAspectRatio" class="dash-select compact" onchange="setCropAspectRatio(this.value)">
+        <option value="screen" selected>Screen Fit</option>
+        <option value="free">Free</option>
+        <option value="16:9">16:9</option>
+        <option value="4:3">4:3</option>
+        <option value="1:1">1:1</option>
+      </select>
+    </div>
+    <div class="crop-container crop-modal-image-wrap">
+      <img id="cropImage" src="" alt="Crop Preview">
+    </div>
+    <div class="crop-actions">
+      <button class="btn btn-ghost" onclick="closeCropModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCroppedImage()">Set Wallpaper</button>
+    </div>
+  </div>
+</div>

@@ -1,8 +1,22 @@
 YouMe Online (Next.js)
 
 Purpose
-- Cloud-friendly build for Vercel.
-- No YouTube download or yt-dlp usage.
+- Next.js version of the YouMe dashboard UI.
+- Keeps the same dashboard flow and sections except removed features below.
+- Removed from this web build:
+  - Music player (ambient and track controls)
+  - YouTube downloader section
+- Replaced with local upload audio:
+  - Users can drag and drop local lofi/music files in Focus Mode.
+  - Uploaded audio is played only in the browser and is not stored in database.
+
+Included sections
+- Focus Mode (Pomodoro + notes + local lofi upload player)
+- Library
+- Watchlist
+- Daily Planner
+- Admin
+- Settings (themes + custom wallpaper crop)
 
 Local development
 1. Install Node.js 20+.
@@ -18,6 +32,7 @@ Deploy to Vercel
 4. Build command: npm run build
 5. Output defaults to Next.js standard output.
 
-Notes
-- This app is intentionally lightweight and browser-first.
-- It currently focuses on Pomodoro and habit tracking.
+Implementation notes
+- Dashboard markup is loaded from `public/youme-body.html`.
+- Styles and behavior are loaded from `public/youme.css` and `public/youme.js`.
+- Theme wallpapers are under `public/themes/`.

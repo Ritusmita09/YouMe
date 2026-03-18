@@ -2738,8 +2738,31 @@ function saveCroppedImage() {
   }
 }
 
+function initParallaxBackground() {
+  if (typeof window === "undefined" || !window.gsap || !window.ScrollTrigger) return;
+  gsap.registerPlugin(ScrollTrigger);
+
+  const bgLayer = document.querySelector(".bg-layer");
+  if (!bgLayer) return;
+
+  gsap.to(bgLayer, {
+    y: "15vh",
+    ease: "none",
+    scrollTrigger: {
+      trigger: document.body,
+      start: "top top",
+      end: "bottom bottom",
+      scrub: true
+    }
+  });
+}
+
 if (document.readyState === "loading") {
-  window.addEventListener("DOMContentLoaded", initApp);
+  window.addEventListener("DOMContentLoaded", () => {
+    initApp();
+    initParallaxBackground();
+  });
 } else {
   initApp();
+  initParallaxBackground();
 }

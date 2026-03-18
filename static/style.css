@@ -90,24 +90,23 @@
 }
 
 .cursor-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.9);
-  mix-blend-mode: difference;
+  background: radial-gradient(circle at 35% 35%, #fff 0 35%, #ffd7ea 36% 68%, #ff8ac8 69% 100%);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 0 14px rgba(255, 105, 180, 0.45);
   z-index: 10000;
   transform: translate(-50%, -50%);
   will-change: transform;
 }
 
 .cursor {
-  width: 30px;
-  height: 30px;
-  background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Hello_Kitty_Bow.svg/1024px-Hello_Kitty_Bow.svg.png') no-repeat center/contain;
+  width: 34px;
+  height: 34px;
+  background: url('/static/themes/kitty-bow-cursor.svg') no-repeat center/contain;
   z-index: 9999;
   transform: translate(-50%, -50%);
-  filter: drop-shadow(0 6px 12px rgba(255, 20, 147, 0.34));
+  filter: drop-shadow(0 8px 10px rgba(245, 63, 159, 0.24));
   will-change: transform;
 }
 
@@ -124,12 +123,13 @@
 
 .heart {
   position: fixed;
-  width: 10px;
-  height: 10px;
-  background: #ff88c8;
+  width: 9px;
+  height: 9px;
+  background: var(--heart-color, #ff88c8);
   transform: rotate(45deg);
   pointer-events: none;
   z-index: 9998;
+  filter: drop-shadow(0 0 6px rgba(255, 105, 180, 0.4));
   will-change: transform, opacity;
 }
 
@@ -137,19 +137,19 @@
 .heart::after {
   content: "";
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #ff88c8;
+  width: 9px;
+  height: 9px;
+  background: var(--heart-color, #ff88c8);
   border-radius: 50%;
 }
 
 .heart::before {
-  top: -5px;
+  top: -4px;
   left: 0;
 }
 
 .heart::after {
-  left: -5px;
+  left: -4px;
   top: 0;
 }
 

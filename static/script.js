@@ -203,6 +203,7 @@ const kittyCursorState = {
   particlesEl: null,
   mouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
   pos: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+  rotation: 0,
   lastHeartAt: 0,
   interactiveEls: [],
 };
@@ -223,10 +224,13 @@ function kittyCursorTick() {
   const state = kittyCursorState;
   if (!state.enabled || !state.gsap) return;
 
-  state.pos.x += (state.mouse.x - state.pos.x) * 0.16;
-  state.pos.y += (state.mouse.y - state.pos.y) * 0.16;
+  const dx = state.mouse.x - state.pos.x;
+  const dy = state.mouse.y - state.pos.y;
+  state.pos.x += dx * 0.14;
+  state.pos.y += dy * 0.14;
+  state.rotation = Math.max(-16, Math.min(16, dx * 0.12));
 
-  state.gsap.set(state.cursorEl, { x: state.pos.x, y: state.pos.y });
+  state.gsap.set(state.cursorEl, { x: state.pos.x, y: state.pos.y, rotation: state.rotation });
   state.gsap.set(state.dotEl, { x: state.mouse.x, y: state.mouse.y });
 }
 
@@ -236,6 +240,8 @@ function createKittyHeart(x, y, burst = false) {
 
   const heart = document.createElement("div");
   heart.className = "heart";
+  const palette = ["#ff79bf", "#ff8fcb", "#ffa7d8", "#ff62b2"];
+  heart.style.setProperty("--heart-color", palette[Math.floor(Math.random() * palette.length)]);
   state.particlesEl.appendChild(heart);
 
   const spread = burst ? 80 : 30;
@@ -300,15 +306,15 @@ function syncKittyCursorWithTheme() {
 
 function bindKittyCursorTargets() {
   const state = kittyCursorState;
-  const selector = "a, button, .btn, .nav-item, .mob-tab, .theme-opt, input, select, textarea, [role='button']";
+  const selector = "a, button, .btn, .nav-item, .mob-tab, .theme-opt, [role='button'], .lib-card, .wl-pl-card";
   state.interactiveEls = Array.from(new Set(Array.from(document.querySelectorAll(selector))));
 
   state.interactiveEls.forEach((el) => {
     el.addEventListener("mouseenter", () => {
       if (!state.enabled || !state.gsap) return;
       state.gsap.to(state.cursorEl, {
-        scale: 1.8,
-        duration: 0.26,
+        scale: 1.45,
+        duration: 0.22,
         ease: "power2.out",
         overwrite: "auto",
       });
@@ -318,7 +324,7 @@ function bindKittyCursorTargets() {
       if (!state.gsap) return;
       state.gsap.to(state.cursorEl, {
         scale: 1,
-        duration: 0.22,
+        duration: 0.2,
         ease: "power2.out",
         overwrite: "auto",
       });
@@ -331,9 +337,9 @@ function bindKittyCursorTargets() {
       const x = e.clientX - rect.left - rect.width / 2;
       const y = e.clientY - rect.top - rect.height / 2;
       state.gsap.to(el, {
-        x: x * 0.18,
-        y: y * 0.18,
-        duration: 0.24,
+        x: x * 0.11,
+        y: y * 0.11,
+        duration: 0.2,
         ease: "power2.out",
         overwrite: "auto",
       });
@@ -363,8 +369,8 @@ function initHelloKittyCursor() {
     if (!state.enabled) return;
 
     const now = performance.now();
-    const enoughTimePassed = now - state.lastHeartAt > 34;
-    if (enoughTimePassed && Math.random() > 0.7) {
+    const enoughTimePassed = now - state.lastHeartAt > 52;
+    if (enoughTimePassed && Math.random() > 0.84) {
       state.lastHeartAt = now;
       createKittyHeart(e.clientX, e.clientY, false);
     }
@@ -377,10 +383,10 @@ function initHelloKittyCursor() {
     state.gsap.fromTo(state.cursorEl,
       { scale: 1 },
       {
-        scale: 0.72,
+        scale: 0.82,
         yoyo: true,
         repeat: 1,
-        duration: 0.14,
+        duration: 0.12,
         ease: "power2.out",
       },
     );

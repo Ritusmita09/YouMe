@@ -7,10 +7,9 @@ import webbrowser
 from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta, date
 from functools import wraps
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, current_user, login_user, logout_user
-from authlib.integrations.flask_client import OAuth
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import yt_dlp
@@ -55,31 +54,17 @@ app.config.update(
     SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "0") == "1",
 )
 
-AUTH_REQUIRED = os.getenv("AUTH_REQUIRED", "0") == "1"
-INVITE_ONLY = os.getenv("INVITE_ONLY", "1") == "1"
+AUTH_REQUIRED = True
+INVITE_ONLY = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-oauth = OAuth(app)
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
     storage_uri=os.getenv("RATELIMIT_STORAGE_URI", "memory://"),
     default_limits=[],
 )
-
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-
-google_oauth = None
-if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
-    google_oauth = oauth.register(
-        name="google",
-        client_id=GOOGLE_CLIENT_ID,
-        client_secret=GOOGLE_CLIENT_SECRET,
-        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
-    )
 
 print(f"TEMPLATES: {app.template_folder}")
 print(f"STATIC: {app.static_folder}")
@@ -122,6 +107,84 @@ FFMPEG_LOCATION = os.path.dirname(FFMPEG_BINARY) if os.path.isfile(FFMPEG_BINARY
 # Track download progress per task ID
 download_tasks = {}
 download_tasks_lock = threading.Lock()
+
+# In-memory cache for resolved YouTube stream URLs ─ avoids re-extraction on Range seeks
+_yt_stream_cache: dict = {}
+_yt_stream_cache_lock = threading.Lock()
+
+
+def _resolve_yt_stream(yt_url: str) -> dict:
+    """Resolve a YouTube URL to a direct audio stream URL via yt-dlp.
+    Results are cached for 1 hour.  Returns dict with stream_url, content_type, title, thumbnail.
+    """
+    from urllib.parse import urlparse as _up
+    now = datetime.now(timezone.utc).timestamp()
+    with _yt_stream_cache_lock:
+        entry = _yt_stream_cache.get(yt_url)
+        if entry and now < entry["expires"]:
+            return entry
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "format": "bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best",
+        "skip_download": True,
+    }
+    if FFMPEG_LOCATION:
+        ydl_opts["ffmpeg_location"] = FFMPEG_LOCATION
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(yt_url, download=False)
+        if not info:
+            raise ValueError("Could not extract stream info")
+
+        stream_url = info.get("url")
+        content_type = "audio/webm"
+
+        if not stream_url and info.get("formats"):
+            audio_fmts = [
+                f for f in info["formats"]
+                if f.get("acodec") != "none" and f.get("vcodec") == "none" and f.get("url")
+            ]
+            if audio_fmts:
+                audio_fmts.sort(key=lambda f: f.get("abr") or f.get("tbr") or 0, reverse=True)
+                best = audio_fmts[0]
+                stream_url = best["url"]
+                ext = best.get("ext", "webm")
+                content_type = f"audio/{ext}" if ext else "audio/webm"
+            elif info["formats"]:
+                stream_url = info["formats"][-1].get("url", "")
+
+        if not stream_url:
+            raise ValueError("No playable stream URL found")
+
+        thumbnail = info.get("thumbnail", "")
+        if not thumbnail and info.get("thumbnails"):
+            thumbnail = info["thumbnails"][-1].get("url", "")
+
+        # Capture the HTTP headers yt-dlp used — required to replay the stream URL
+        fmt_headers = {}
+        if info.get("http_headers"):
+            fmt_headers = dict(info["http_headers"])
+        elif info.get("requested_downloads") and info["requested_downloads"][0].get("http_headers"):
+            fmt_headers = dict(info["requested_downloads"][0]["http_headers"])
+        elif info.get("formats"):
+            for f in info["formats"]:
+                if f.get("url") == stream_url and f.get("http_headers"):
+                    fmt_headers = dict(f["http_headers"])
+                    break
+
+        entry = {
+            "stream_url": stream_url,
+            "content_type": content_type,
+            "title": info.get("title", "Track"),
+            "thumbnail": thumbnail,
+            "http_headers": fmt_headers,
+            "expires": now + 3600,
+        }
+        with _yt_stream_cache_lock:
+            _yt_stream_cache[yt_url] = entry
+        return entry
 
 
 class User(db.Model, UserMixin):
@@ -263,72 +326,53 @@ def healthz():
 
 @app.route("/login")
 def login():
-    if not AUTH_REQUIRED:
-        return redirect(url_for("index"))
     if current_user.is_authenticated:
         return redirect(url_for("index"))
-    if google_oauth is None:
-        return (
-            "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
-            503,
-        )
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
     logout_user()
-    return redirect(url_for("login" if AUTH_REQUIRED else "index"))
+    return redirect(url_for("index"))
 
 
-@app.route("/auth/google")
-def auth_google():
-    if google_oauth is None:
-        return jsonify({"error": "Google OAuth not configured"}), 503
-    redirect_uri = url_for("auth_google_callback", _external=True)
-    return google_oauth.authorize_redirect(redirect_uri)
+@app.route("/auth/local", methods=["POST"])
+def auth_local():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
 
+    raw_email = (request.form.get("email") or "").strip().lower()
+    display_name = (request.form.get("display_name") or "").strip()
 
-@app.route("/auth/google/callback")
-def auth_google_callback():
-    if google_oauth is None:
-        return jsonify({"error": "Google OAuth not configured"}), 503
+    if not raw_email:
+        return render_template("login.html", error="Email is required for local sign in."), 400
+    if "@" not in raw_email or len(raw_email) > 255:
+        return render_template("login.html", error="Enter a valid email address."), 400
 
-    token = google_oauth.authorize_access_token()
-    userinfo = token.get("userinfo")
-    if not userinfo:
-        userinfo = google_oauth.parse_id_token(token)
-
-    email = (userinfo.get("email") or "").strip().lower()
-    sub = (userinfo.get("sub") or "").strip()
-    if not email or not sub:
-        return jsonify({"error": "Failed to read Google account details"}), 400
-
-    invited = is_invited(email)
-
-    user = User.query.filter_by(email=email).first()
+    user = User.query.filter_by(email=raw_email).first()
     if not user:
+        local_sub = f"local:{uuid.uuid4()}"
         user = User(
-            google_sub=sub,
-            email=email,
-            display_name=userinfo.get("name", ""),
-            avatar_url=userinfo.get("picture", ""),
-            subscription_tier="premium" if invited else "free",
+            google_sub=local_sub,
+            email=raw_email,
+            display_name=display_name or raw_email.split("@")[0],
+            avatar_url="",
+            subscription_tier="free",
             is_active_user=True,
         )
         db.session.add(user)
     else:
-        user.google_sub = sub
-        user.display_name = userinfo.get("name", user.display_name)
-        user.avatar_url = userinfo.get("picture", user.avatar_url)
-        if invited and (user.subscription_tier or "free").lower() == "free":
-            user.subscription_tier = "premium"
+        if display_name:
+            user.display_name = display_name
+        if not user.google_sub:
+            user.google_sub = f"local:{uuid.uuid4()}"
         if not user.subscription_tier:
             user.subscription_tier = "free"
         user.updated_at = datetime.now(timezone.utc)
 
     db.session.commit()
-    login_user(user)
+    login_user(user, remember=True)
     return redirect(url_for("index"))
 
 
@@ -369,6 +413,78 @@ def index():
     if AUTH_REQUIRED and not current_user.is_authenticated:
         return redirect(url_for("login"))
     return render_template("index.html")
+
+
+@app.route("/admin_profile")
+@api_auth_required
+@limiter.limit("40/minute")
+def admin_profile():
+    user = current_user if current_user.is_authenticated else None
+    if not user:
+        return jsonify({"error": "Authentication required"}), 401
+
+    download_count = 0
+    try:
+        download_count = sum(
+            1 for name in os.listdir(DOWNLOAD_FOLDER)
+            if os.path.isfile(os.path.join(DOWNLOAD_FOLDER, name))
+        )
+    except Exception:
+        download_count = 0
+
+    habits_total = Habit.query.filter_by(user_id=user.id).count()
+    habits_done = Habit.query.filter_by(user_id=user.id, is_completed=True).count()
+
+    streak = PomodoroStreak.query.filter_by(user_id=user.id).first()
+    current_streak = streak.current_streak if streak else 0
+    best_streak = streak.best_streak if streak else 0
+
+    created_at_iso = ""
+    if getattr(user, "created_at", None):
+        try:
+            created_at_iso = user.created_at.astimezone(timezone.utc).isoformat()
+        except Exception:
+            created_at_iso = str(user.created_at)
+
+    badges = [
+        {
+            "code": "first_download",
+            "title": "First Download",
+            "description": "Unlock after your first successful download.",
+            "status": "coming-soon",
+        },
+        {
+            "code": "focus_starter",
+            "title": "Focus Starter",
+            "description": "Unlock after 3 focus sessions in one day.",
+            "status": "coming-soon",
+        },
+        {
+            "code": "streak_hero",
+            "title": "Streak Hero",
+            "description": "Unlock after a 7-day streak.",
+            "status": "coming-soon",
+        },
+    ]
+
+    return jsonify({
+        "profile": {
+            "id": user.id,
+            "name": user.display_name or user.email.split("@")[0],
+            "email": user.email,
+            "tier": (user.subscription_tier or "free").title(),
+            "avatar_url": user.avatar_url or "",
+            "member_since": created_at_iso,
+        },
+        "stats": {
+            "downloads": download_count,
+            "habits_total": habits_total,
+            "habits_done": habits_done,
+            "current_streak": current_streak,
+            "best_streak": best_streak,
+        },
+        "badges": badges,
+    })
 
 
 
@@ -506,14 +622,55 @@ def video_info():
             info = ydl.extract_info(url, download=False)
             if not info:
                 return jsonify({"error": "Could not retrieve info"}), 400
-            title = info.get("title", "Unknown")
-            thumbnail = info.get("thumbnail", "")
-            if not thumbnail and info.get("thumbnails"):
-                thumbnail = info["thumbnails"][-1].get("url", "")
-            return jsonify({
-                "title": title,
-                "thumbnail": thumbnail
-            })
+
+            if "entries" in info:
+                # Playlist: collect per-entry metadata
+                entries = []
+                total_duration = 0
+                for entry in (info.get("entries") or []):
+                    if not entry:
+                        continue
+                    dur = int(entry.get("duration") or 0)
+                    total_duration += dur
+                    thumb = entry.get("thumbnail", "")
+                    if not thumb and entry.get("thumbnails"):
+                        thumb = entry["thumbnails"][-1].get("url", "")
+                    vid_url = entry.get("webpage_url") or entry.get("url") or ""
+                    if not vid_url and entry.get("id"):
+                        vid_url = f"https://www.youtube.com/watch?v={entry['id']}"
+                    entries.append({
+                        "id": entry.get("id", ""),
+                        "title": entry.get("title", "Unknown"),
+                        "duration": dur,
+                        "thumb": thumb,
+                        "url": vid_url,
+                    })
+
+                pl_thumb = info.get("thumbnail", "")
+                if not pl_thumb and info.get("thumbnails"):
+                    pl_thumb = info["thumbnails"][-1].get("url", "")
+                if not pl_thumb and entries:
+                    pl_thumb = entries[0].get("thumb", "")
+
+                return jsonify({
+                    "type": "playlist",
+                    "title": info.get("title", "Playlist"),
+                    "thumb": pl_thumb,
+                    "count": len(entries),
+                    "total_duration": total_duration,
+                    "entries": entries,
+                })
+            else:
+                # Single video
+                thumb = info.get("thumbnail", "")
+                if not thumb and info.get("thumbnails"):
+                    thumb = info["thumbnails"][-1].get("url", "")
+                return jsonify({
+                    "type": "video",
+                    "title": info.get("title", "Unknown"),
+                    "thumb": thumb,
+                    "duration": int(info.get("duration") or 0),
+                })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -522,10 +679,96 @@ def video_info():
 @api_auth_required
 @limiter.limit("30/minute")
 def music_stream_url():
-    return jsonify({
-        "error": "Server-side music stream extraction is disabled. Resolve stream URLs in the browser.",
-        "mode": "client-side-extractor-required",
-    }), 410
+    """Pre-warm the stream URL cache and return track metadata.  The actual audio
+    is delivered via /music_proxy so the browser never touches YouTube CDN directly."""
+    data = request.get_json() or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+    if not is_supported_media_url(url):
+        return jsonify({"error": "Unsupported URL. Only YouTube links are allowed."}), 400
+    try:
+        entry = _resolve_yt_stream(url)
+        return jsonify({"title": entry["title"], "thumbnail": entry["thumbnail"]})
+    except yt_dlp.utils.DownloadError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/music_proxy")
+@api_auth_required
+@limiter.limit("60/minute")
+def music_proxy():
+    """Proxy YouTube audio stream through the server so the browser plays it without
+    direct YouTube CDN access (avoids IP-binding and CORS issues).
+    Supports HTTP Range requests for seeking.
+    """
+    from urllib.request import Request as _UrlReq, urlopen as _urlopen
+    yt_url = request.args.get("url", "").strip()
+    if not yt_url or not is_supported_media_url(yt_url):
+        return jsonify({"error": "Invalid URL"}), 400
+
+    try:
+        entry = _resolve_yt_stream(yt_url)
+    except yt_dlp.utils.DownloadError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    stream_url = entry["stream_url"]
+    content_type = entry["content_type"]
+
+    range_header = request.headers.get("Range")
+    # Start with the headers yt-dlp used during extraction, then add/override as needed
+    upstream_headers = dict(entry.get("http_headers") or {})
+    upstream_headers["User-Agent"] = upstream_headers.get(
+        "User-Agent",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    )
+    # Remove headers that would cause issues when proxying
+    for h in ("Host", "Connection", "Content-Length", "Transfer-Encoding"):
+        upstream_headers.pop(h, None)
+        upstream_headers.pop(h.lower(), None)
+    if range_header:
+        upstream_headers["Range"] = range_header
+
+    try:
+        req = _UrlReq(stream_url, headers=upstream_headers)
+        resp = _urlopen(req, timeout=30)
+
+        response_headers = {"Accept-Ranges": "bytes"}
+        content_range = resp.headers.get("Content-Range")
+        content_length = resp.headers.get("Content-Length")
+        actual_ct = resp.headers.get("Content-Type", content_type)
+
+        if content_range:
+            response_headers["Content-Range"] = content_range
+        if content_length:
+            response_headers["Content-Length"] = content_length
+
+        http_status = 206 if (range_header and content_range) else 200
+
+        def generate():
+            try:
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    yield chunk
+            finally:
+                resp.close()
+
+        return Response(
+            generate(),
+            status=http_status,
+            content_type=actual_ct,
+            headers=response_headers,
+        )
+    except Exception as e:
+        print(f"[music_proxy] Stream error: {type(e).__name__}: {e}", flush=True)
+        return jsonify({"error": f"Stream proxy error: {str(e)}"}), 502
 
 
 @app.route("/music_download", methods=["POST"])

@@ -260,6 +260,44 @@
       color: #ffffff;
     }
 
+    .local-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .local-input {
+      width: 100%;
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      background: rgba(14, 22, 39, 0.46);
+      color: #f7fbff;
+      padding: 11px 13px;
+      font-family: "Montserrat", sans-serif;
+      font-size: 0.92rem;
+    }
+
+    .local-input::placeholder {
+      color: rgba(225, 238, 255, 0.7);
+    }
+
+    .local-input:focus {
+      outline: none;
+      border-color: rgba(150, 211, 255, 0.9);
+      box-shadow: 0 0 0 3px rgba(130, 194, 255, 0.18);
+    }
+
+    .error-box {
+      margin-top: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 140, 162, 0.62);
+      background: rgba(111, 18, 31, 0.42);
+      color: #ffe5ec;
+      padding: 9px 11px;
+      font-size: 0.85rem;
+    }
+
     @keyframes theme-cycle {
       0% {
         opacity: 0;
@@ -333,9 +371,12 @@
 
     <h1>Sign in to start your focus session</h1>
     <p>
-      Continue with Google to unlock your personalized workspace.
-      Everyone can log in, and invite-approved users get premium habit analytics.
+      Localhost mode is enabled. Sign in with your name and email to unlock your personalized workspace.
     </p>
+
+    {% if error %}
+      <div class="error-box" role="alert">{{ error }}</div>
+    {% endif %}
 
     <div class="theme-status" aria-live="polite">
       <span class="theme-dot"></span>
@@ -348,12 +389,16 @@
       <li><span class="dot"></span> 7-day and 28-day habit consistency insights for approved users</li>
     </ul>
 
-    <a class="btn-google" href="/auth/google" aria-label="Continue with Google">
-      <span>Continue with Google</span>
-    </a>
+    <form class="local-form" method="post" action="/auth/local" aria-label="Continue locally">
+      <input class="local-input" type="text" name="display_name" placeholder="Display name (optional)" maxlength="120" />
+      <input class="local-input" type="email" name="email" placeholder="Email address" maxlength="255" required />
+      <button class="btn-google" type="submit" aria-label="Continue on localhost">
+        <span>Continue on Localhost</span>
+      </button>
+    </form>
 
     <div class="hint">
-      Access level is assigned automatically after sign-in based on your invite status.
+      Google auth is disabled for now. Local sign-in keeps everything on your machine.
     </div>
   </main>
 

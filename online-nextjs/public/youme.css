@@ -171,6 +171,10 @@ body {
   transition: transform 0.14s linear;
 }
 
+[data-theme="hello-kitty"],
+[data-theme="hello-kitty"] * {
+  cursor: none !important;
+}
 [data-theme="spiderman"] .bg-layer { background-image: url('themes/spiderman-new-new.jpg'); background-size: cover; background-position: center 15%; background-repeat: no-repeat; }
 [data-theme="spiderman"] .bg-layer::before {
   content: '';

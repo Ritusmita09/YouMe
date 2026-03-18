@@ -428,7 +428,8 @@ function getSectionScrollOffset() {
   const topbar = document.querySelector(".mobile-topbar");
   const topbarVisible = !!topbar && window.getComputedStyle(topbar).display !== "none";
   const topbarHeight = topbarVisible ? topbar.getBoundingClientRect().height : 0;
-  return Math.ceil(topbarHeight + 24);
+  const extraGap = topbarVisible ? 56 : 20;
+  return Math.ceil(topbarHeight + extraGap);
 }
 
 /* ─── Navigation ────────────────────────────────────────── */
@@ -439,7 +440,8 @@ function showSection(name) {
   setActiveNav(name);
   maybeLoadSectionData(name);
 
-  const targetY = window.pageYOffset + sec.getBoundingClientRect().top - getSectionScrollOffset();
+  const anchor = sec.querySelector(".sec-header") || sec;
+  const targetY = window.pageYOffset + anchor.getBoundingClientRect().top - getSectionScrollOffset();
   window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
 
   // Animate the active section when GSAP is available.

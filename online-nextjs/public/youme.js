@@ -433,11 +433,19 @@ function scrollSectionAnchorIntoView(anchor) {
     const isTopbarVisible = topbar && window.getComputedStyle(topbar).display !== "none";
     const topbarHeight = isTopbarVisible ? topbar.getBoundingClientRect().height : 0;
     
+    // Calculate sidebar topbar height dynamically (on desktop it is sticky)
+    const sidebar = document.querySelector(".sidebar");
+    const isSidebarVisible = sidebar && window.getComputedStyle(sidebar).display !== "none";
+    const isSidebarSticky = isSidebarVisible && window.getComputedStyle(sidebar).position === "sticky";
+    const sidebarHeight = isSidebarSticky ? sidebar.getBoundingClientRect().height : 0;
+
+    const activeHeaderHeight = Math.max(topbarHeight, sidebarHeight);
+
     // Additional padding to account for .sec-header's own padding and any margins
     // On mobile, ensure header is WELL clear of topbar
     const isMobile = window.innerWidth <= 768;
-    const extraPadding = isMobile ? 80 : 10;  // 80px extra clearance on mobile
-    const desiredOffset = topbarHeight + extraPadding;
+    const extraPadding = isMobile ? 80 : 32;  // 80px extra clearance on mobile, 32px on desktop
+    const desiredOffset = activeHeaderHeight + extraPadding;
 
     // Get the element's absolute position on the page
     const rect = anchor.getBoundingClientRect();

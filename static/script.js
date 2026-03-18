@@ -70,10 +70,31 @@ function initSectionScrollTracking() {
 
 function scrollSectionAnchorIntoView(anchor) {
   if (!anchor) return;
-  // Use native scrollIntoView which respects CSS scroll-margin-top.
-  // The .sec-header has scroll-margin-top set for mobile/desktop in CSS.
-  anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // Calculate topbar height dynamically
+  const topbar = document.querySelector(".mobile-topbar");
+  const isTopbarVisible = topbar && window.getComputedStyle(topbar).display !== "none";
+  const topbarHeight = isTopbarVisible ? topbar.getBoundingClientRect().height : 0;
+  
+  // Calculate desired gap based on screen width and topbar
+  const gap = window.innerWidth <= 768 ? Math.max(100, topbarHeight + 50) : 20;
+  const desiredOffset = topbarHeight + gap;
+
+  // Get the element's current position
+  const rect = anchor.getBoundingClientRect();
+  
+  // Calculate how much we need to scroll
+  const scrollNeeded = rect.top - desiredOffset;
+  
+  // Perform the scroll
+  if (Math.abs(scrollNeeded) > 1) {
+    window.scrollBy({
+      top: scrollNeeded,
+      behavior: "smooth"
+    });
+  }
 }
+
 
 /* ─── Navigation ────────────────────────────────────────── */
 function showSection(name) {

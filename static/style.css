@@ -2080,6 +2080,7 @@ body {
 }
 
 @media (max-width: 768px) {
+  :root { --section-scroll-offset: 84px; }
   .sidebar { display: none; }
   .mobile-topbar { display: flex; }
   .main-content { padding: 70px 14px 34px; }

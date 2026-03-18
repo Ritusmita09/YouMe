@@ -69,7 +69,10 @@ function initSectionScrollTracking() {
 }
 
 function scrollSectionAnchorIntoView(anchor) {
-  if (!anchor) return;
+  if (!anchor) {
+    console.warn("scrollSectionAnchorIntoView: no anchor element");
+    return;
+  }
 
   const performScroll = () => {
     // Calculate topbar height dynamically
@@ -83,23 +86,28 @@ function scrollSectionAnchorIntoView(anchor) {
 
     // Get the element's current position
     const rect = anchor.getBoundingClientRect();
-    
-    // Calculate how much we need to scroll
     const scrollNeeded = rect.top - desiredOffset;
+    
+    console.log(`[SCROLL DEBUG] topbarHeight=${topbarHeight}, gap=${gap}, desiredOffset=${desiredOffset}, rect.top=${rect.top}, scrollNeeded=${scrollNeeded}, viewport width=${window.innerWidth}`);
     
     // Perform the scroll
     if (Math.abs(scrollNeeded) > 1) {
+      console.log(`[SCROLL] Scrolling by ${scrollNeeded}px`);
       window.scrollBy({
         top: scrollNeeded,
         behavior: "smooth"
       });
+    } else {
+      console.log(`[SCROLL] No scroll needed (delta < 1px)`);
     }
     
     // Correction pass after smooth scroll completes (after ~500ms)
     setTimeout(() => {
       const newRect = anchor.getBoundingClientRect();
       const correctionNeeded = newRect.top - desiredOffset;
+      console.log(`[SCROLL CORRECTION] newRect.top=${newRect.top}, correctionNeeded=${correctionNeeded}`);
       if (Math.abs(correctionNeeded) > 3) {
+        console.log(`[SCROLL CORRECTION] Applying correction of ${correctionNeeded}px`);
         window.scrollBy({
           top: correctionNeeded,
           behavior: "auto"
@@ -115,14 +123,20 @@ function scrollSectionAnchorIntoView(anchor) {
 
 /* ─── Navigation ────────────────────────────────────────── */
 function showSection(name) {
+  console.log(`[NAV] showSection('${name}') called`);
   const sec = document.getElementById(`sec-${name}`);
-  if (!sec) return;
+  if (!sec) {
+    console.error(`[NAV] Section sec-${name} not found!`);
+    return;
+  }
+  console.log(`[NAV] Found section:`, sec);
 
   setActiveNav(name);
   maybeLoadSectionData(name);
 
   // Target the h1.sec-title for better visibility, fallback to .sec-header then sec
   const anchor = sec.querySelector(".sec-title") || sec.querySelector(".sec-header") || sec;
+  console.log(`[NAV] Target anchor:`, anchor);
   scrollSectionAnchorIntoView(anchor);
 
   // Animate the active section when GSAP is available.

@@ -433,11 +433,11 @@ function scrollSectionAnchorIntoView(anchor) {
     const isTopbarVisible = topbar && window.getComputedStyle(topbar).display !== "none";
     const topbarHeight = isTopbarVisible ? topbar.getBoundingClientRect().height : 0;
     
-    // On mobile: topbar + 50px gap is minimum
-    // On desktop: small gap is fine
+    // Additional padding to account for .sec-header's own padding and any margins
+    // On mobile, ensure header is WELL clear of topbar
     const isMobile = window.innerWidth <= 768;
-    const gap = isMobile ? Math.max(50, topbarHeight + 20) : 10;
-    const desiredOffset = topbarHeight + gap;
+    const extraPadding = isMobile ? 80 : 10;  // 80px extra clearance on mobile
+    const desiredOffset = topbarHeight + extraPadding;
 
     // Get the element's absolute position on the page
     const rect = anchor.getBoundingClientRect();
@@ -445,27 +445,28 @@ function scrollSectionAnchorIntoView(anchor) {
     const targetScrollY = elementAbsoluteTop - desiredOffset;
     
     // Use scrollTo with absolute Y position
-    if (Math.abs(window.scrollY - targetScrollY) > 2) {
+    if (Math.abs(window.scrollY - targetScrollY) > 1) {
       window.scrollTo({
         top: Math.max(0, targetScrollY),
         behavior: "smooth",
         left: 0
       });
+      
+      // Additional correction passes at multiple intervals
+      [300, 600, 1000].forEach((delay) => {
+        setTimeout(() => {
+          const newAbsoluteTop = window.scrollY + anchor.getBoundingClientRect().top;
+          const newTargetY = newAbsoluteTop - desiredOffset;
+          const correction = window.scrollY - newTargetY;
+          if (Math.abs(correction) > 2) {
+            window.scrollTo({
+              top: Math.max(0, newTargetY),
+              behavior: "auto"
+            });
+          }
+        }, delay);
+      });
     }
-    
-    // Correction pass after smooth scroll completes
-    setTimeout(() => {
-      const newAbsoluteTop = window.scrollY + anchor.getBoundingClientRect().top;
-      const newTargetY = newAbsoluteTop - desiredOffset;
-      const correction = Math.abs(window.scrollY - newTargetY);
-      if (correction > 3) {
-        window.scrollTo({
-          top: Math.max(0, newTargetY),
-          behavior: "auto",
-          left: 0
-        });
-      }
-    }, 500);
   };
 
   // Small delay to ensure DOM is fully laid out

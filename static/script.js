@@ -68,6 +68,13 @@ function initSectionScrollTracking() {
   sectionElements.forEach(sec => observer.observe(sec));
 }
 
+function getSectionScrollOffset() {
+  const topbar = document.querySelector(".mobile-topbar");
+  const topbarVisible = !!topbar && window.getComputedStyle(topbar).display !== "none";
+  const topbarHeight = topbarVisible ? topbar.getBoundingClientRect().height : 0;
+  return Math.ceil(topbarHeight + 24);
+}
+
 /* ─── Navigation ────────────────────────────────────────── */
 function showSection(name) {
   const sec = document.getElementById(`sec-${name}`);
@@ -76,9 +83,8 @@ function showSection(name) {
   setActiveNav(name);
   maybeLoadSectionData(name);
 
-  if (typeof sec.scrollIntoView === "function") {
-    sec.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  const targetY = window.pageYOffset + sec.getBoundingClientRect().top - getSectionScrollOffset();
+  window.scrollTo({ top: Math.max(0, targetY), behavior: "smooth" });
 
   // Animate the active section when GSAP is available.
   animateSectionEntrance(name);

@@ -2055,7 +2055,7 @@ body {
   :root { --section-scroll-offset: calc(112px + env(safe-area-inset-top, 0px)); }
   .sidebar { display: none; }
   .mobile-topbar { display: flex; }
-  .main-content { padding: 70px 14px 34px; }
+  .main-content { padding: calc(124px + env(safe-area-inset-top, 0px)) 14px 34px; }
   .app-section { min-height: 72vh; }
   .app-section + .app-section { margin-top: clamp(34px, 8vw, 50px); }
   .sec-title { font-size: 1.45rem; }

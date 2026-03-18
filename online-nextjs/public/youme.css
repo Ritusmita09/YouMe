@@ -150,7 +150,7 @@ body {
 
 [data-theme="batman"] .bg-layer { background-image: none; background-size: cover; background-position: center; }
 [data-theme="hello-kitty"] .bg-layer {
-  background-image: url('themes/hello-kitty-wallpaper.jpg');
+  background-image: url('themes/hello-kitty-scroll/frame_0001.jpg');
   background-size: cover;
   background-position: center;
   transform: perspective(1300px) rotateX(var(--kitty-rot-x, 0deg)) rotateY(var(--kitty-rot-y, 0deg)) scale(var(--kitty-scale, 1.04));

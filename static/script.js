@@ -183,6 +183,7 @@ function setTheme(name) {
   // Re-apply wallpaper for the selected theme so each theme can keep its own default/custom image.
   loadCustomBackground();
   syncKittyCursorWithTheme();
+  syncHelloKittyScrollFramesState();
 }
 
 function loadSavedTheme() {
@@ -431,6 +432,12 @@ let currentSoundNodes = [];
 let lofiBeatTimer = null;
 let whiteNoiseBuffer = null;
 let focusTrackCache = {};
+const helloKittyScrollFramesState = {
+  frameCount: 171,
+  trigger: null,
+  currentFrame: -1,
+  loadedFrames: new Set(),
+};
 
 /* ─── Toast ──────────────────────────────────────────────── */
 let toastEl = null;
@@ -2238,6 +2245,81 @@ function getCustomBackgroundKey(themeName) {
   return `youme_custom_bg_${themeName}`;
 }
 
+function hasCustomBackgroundForTheme(themeName) {
+  try {
+    return !!localStorage.getItem(getCustomBackgroundKey(themeName));
+  } catch (_) {
+    return false;
+  }
+}
+
+function shouldEnableHelloKittyScrollFrames() {
+  return getActiveTheme() === "hello-kitty" && !hasCustomBackgroundForTheme("hello-kitty");
+}
+
+function getHelloKittyFrameUrl(frameNumber) {
+  return `/static/themes/hello-kitty-scroll/frame_${String(frameNumber).padStart(4, "0")}.jpg`;
+}
+
+function setHelloKittyScrollFrame(frameNumber) {
+  const bgLayer = document.querySelector('.bg-layer');
+  if (!bgLayer) return;
+
+  const clamped = Math.max(1, Math.min(helloKittyScrollFramesState.frameCount, frameNumber));
+  if (helloKittyScrollFramesState.currentFrame === clamped) return;
+
+  helloKittyScrollFramesState.currentFrame = clamped;
+  const frameUrl = getHelloKittyFrameUrl(clamped);
+  bgLayer.style.backgroundImage = `url('${frameUrl}')`;
+  bgLayer.style.backgroundPosition = "center";
+  bgLayer.style.backgroundSize = "cover";
+}
+
+function preloadHelloKittyFrame(frameNumber) {
+  const clamped = Math.max(1, Math.min(helloKittyScrollFramesState.frameCount, frameNumber));
+  const frameUrl = getHelloKittyFrameUrl(clamped);
+  if (helloKittyScrollFramesState.loadedFrames.has(frameUrl)) return;
+
+  const img = new Image();
+  img.src = frameUrl;
+  helloKittyScrollFramesState.loadedFrames.add(frameUrl);
+}
+
+function syncHelloKittyScrollFramesState() {
+  if (typeof window === "undefined" || !window.ScrollTrigger) return;
+
+  const enabled = shouldEnableHelloKittyScrollFrames();
+  const state = helloKittyScrollFramesState;
+
+  if (state.trigger) {
+    state.trigger.kill();
+    state.trigger = null;
+  }
+
+  if (!enabled) {
+    state.currentFrame = -1;
+    return;
+  }
+
+  setHelloKittyScrollFrame(1);
+  preloadHelloKittyFrame(1);
+  preloadHelloKittyFrame(2);
+  preloadHelloKittyFrame(3);
+
+  state.trigger = ScrollTrigger.create({
+    trigger: document.body,
+    start: "top top",
+    end: "bottom bottom",
+    scrub: true,
+    onUpdate: (self) => {
+      const frame = 1 + Math.round(self.progress * (state.frameCount - 1));
+      setHelloKittyScrollFrame(frame);
+      preloadHelloKittyFrame(frame + 1);
+      preloadHelloKittyFrame(frame + 2);
+    },
+  });
+}
+
 function runWallpaperMigrations() {
   // One-time reset for Spiderman theme so the new built-in wallpaper is visible.
   const migrationKey = "youme_wallpaper_migration_spiderman_v2";
@@ -2267,6 +2349,7 @@ function loadCustomBackground() {
       const hint = document.getElementById("customBgFileHint");
       if (hint) hint.textContent = "No custom image selected.";
     }
+    syncHelloKittyScrollFramesState();
   } catch (_) {}
 }
 
@@ -2277,6 +2360,7 @@ function applyCustomBackground(dataUrl) {
     bgLayer.style.backgroundPosition = "center";
     bgLayer.style.backgroundSize = "cover";
   }
+  syncHelloKittyScrollFramesState();
 }
 
 function clearCustomBackground() {
@@ -2293,6 +2377,7 @@ function clearCustomBackground() {
   if (input) input.value = "";
   const hint = document.getElementById("customBgFileHint");
   if (hint) hint.textContent = "No custom image selected.";
+  syncHelloKittyScrollFramesState();
   showToast("Custom wallpaper cleared", "success");
 }
 
@@ -2464,6 +2549,8 @@ function initParallaxBackground() {
       scrub: true
     }
   });
+
+  syncHelloKittyScrollFramesState();
 }
 
 if (document.readyState === "loading") {

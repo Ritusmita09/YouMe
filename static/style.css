@@ -225,7 +225,7 @@ body {
 }
 
 [data-theme="batman"] .bg-layer { background-image: url('themes/batman-new.jpg'); background-size: cover; background-position: center; }
-[data-theme="hello-kitty"] .bg-layer { background-image: url('themes/hello-kitty-wallpaper.jpg'); background-size: cover; }
+[data-theme="hello-kitty"] .bg-layer { background-image: url('themes/hello-kitty-scroll/frame_0001.jpg'); background-size: cover; }
 [data-theme="spiderman"] .bg-layer { background-image: url('themes/spiderman-new-new.jpg'); background-size: cover; background-position: center 15%; background-repeat: no-repeat; }
 [data-theme="spiderman"] .bg-layer::before {
   content: '';

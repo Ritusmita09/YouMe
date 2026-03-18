@@ -145,6 +145,13 @@ const helloKitty3dState = {
   boundScroll: null,
 };
 
+const helloKittyScrollFramesState = {
+  frameCount: 171,
+  trigger: null,
+  currentFrame: -1,
+  loadedFrames: new Set(),
+};
+
 function hasCustomBackgroundForTheme(themeName) {
   try {
     return !!localStorage.getItem(getCustomBackgroundKey(themeName));
@@ -261,6 +268,73 @@ function shouldEnableHelloKitty3d() {
   return getActiveTheme() === "hello-kitty" && !hasCustomBackgroundForTheme("hello-kitty");
 }
 
+function shouldEnableHelloKittyScrollFrames() {
+  return getActiveTheme() === "hello-kitty" && !hasCustomBackgroundForTheme("hello-kitty");
+}
+
+function getHelloKittyFrameUrl(frameNumber) {
+  return `/themes/hello-kitty-scroll/frame_${String(frameNumber).padStart(4, "0")}.jpg`;
+}
+
+function setHelloKittyScrollFrame(frameNumber) {
+  const bgLayer = document.querySelector('.bg-layer');
+  if (!bgLayer) return;
+
+  const clamped = Math.max(1, Math.min(helloKittyScrollFramesState.frameCount, frameNumber));
+  if (helloKittyScrollFramesState.currentFrame === clamped) return;
+
+  helloKittyScrollFramesState.currentFrame = clamped;
+  const frameUrl = getHelloKittyFrameUrl(clamped);
+  bgLayer.style.backgroundImage = `url('${frameUrl}')`;
+  bgLayer.style.backgroundPosition = "center";
+  bgLayer.style.backgroundSize = "cover";
+}
+
+function preloadHelloKittyFrame(frameNumber) {
+  const clamped = Math.max(1, Math.min(helloKittyScrollFramesState.frameCount, frameNumber));
+  const frameUrl = getHelloKittyFrameUrl(clamped);
+  if (helloKittyScrollFramesState.loadedFrames.has(frameUrl)) return;
+
+  const img = new Image();
+  img.src = frameUrl;
+  helloKittyScrollFramesState.loadedFrames.add(frameUrl);
+}
+
+function syncHelloKittyScrollFramesState() {
+  if (typeof window === "undefined" || !window.ScrollTrigger) return;
+
+  const enabled = shouldEnableHelloKittyScrollFrames();
+  const state = helloKittyScrollFramesState;
+
+  if (state.trigger) {
+    state.trigger.kill();
+    state.trigger = null;
+  }
+
+  if (!enabled) {
+    state.currentFrame = -1;
+    return;
+  }
+
+  setHelloKittyScrollFrame(1);
+  preloadHelloKittyFrame(1);
+  preloadHelloKittyFrame(2);
+  preloadHelloKittyFrame(3);
+
+  state.trigger = ScrollTrigger.create({
+    trigger: document.body,
+    start: "top top",
+    end: "bottom bottom",
+    scrub: true,
+    onUpdate: (self) => {
+      const frame = 1 + Math.round(self.progress * (state.frameCount - 1));
+      setHelloKittyScrollFrame(frame);
+      preloadHelloKittyFrame(frame + 1);
+      preloadHelloKittyFrame(frame + 2);
+    },
+  });
+}
+
 function stopHelloKitty3dLoop() {
   if (helloKitty3dState.rafId) {
     cancelAnimationFrame(helloKitty3dState.rafId);
@@ -368,6 +442,7 @@ function syncHelloKitty3dState() {
 function syncThemeBackgroundEffects() {
   syncBatmanScrollVideoState();
   syncHelloKitty3dState();
+  syncHelloKittyScrollFramesState();
   syncHelloKittyCursorState();
 }
 
@@ -2755,6 +2830,8 @@ function initParallaxBackground() {
       scrub: true
     }
   });
+
+  syncThemeBackgroundEffects();
 }
 
 if (document.readyState === "loading") {

@@ -427,28 +427,45 @@ function initSectionScrollTracking() {
 function scrollSectionAnchorIntoView(anchor) {
   if (!anchor) return;
 
-  // Calculate topbar height dynamically
-  const topbar = document.querySelector(".mobile-topbar");
-  const isTopbarVisible = topbar && window.getComputedStyle(topbar).display !== "none";
-  const topbarHeight = isTopbarVisible ? topbar.getBoundingClientRect().height : 0;
-  
-  // Calculate desired gap based on screen width and topbar
-  const gap = window.innerWidth <= 768 ? Math.max(100, topbarHeight + 50) : 20;
-  const desiredOffset = topbarHeight + gap;
+  const performScroll = () => {
+    // Calculate topbar height dynamically
+    const topbar = document.querySelector(".mobile-topbar");
+    const isTopbarVisible = topbar && window.getComputedStyle(topbar).display !== "none";
+    const topbarHeight = isTopbarVisible ? topbar.getBoundingClientRect().height : 0;
+    
+    // Calculate desired gap - ensure at least 120px of space on mobile
+    const gap = window.innerWidth <= 768 ? Math.max(120, topbarHeight + 60) : 20;
+    const desiredOffset = topbarHeight + gap;
 
-  // Get the element's current position
-  const rect = anchor.getBoundingClientRect();
-  
-  // Calculate how much we need to scroll
-  const scrollNeeded = rect.top - desiredOffset;
-  
-  // Perform the scroll
-  if (Math.abs(scrollNeeded) > 1) {
-    window.scrollBy({
-      top: scrollNeeded,
-      behavior: "smooth"
-    });
-  }
+    // Get the element's current position
+    const rect = anchor.getBoundingClientRect();
+    
+    // Calculate how much we need to scroll
+    const scrollNeeded = rect.top - desiredOffset;
+    
+    // Perform the scroll
+    if (Math.abs(scrollNeeded) > 1) {
+      window.scrollBy({
+        top: scrollNeeded,
+        behavior: "smooth"
+      });
+    }
+    
+    // Correction pass after smooth scroll completes (after ~500ms)
+    setTimeout(() => {
+      const newRect = anchor.getBoundingClientRect();
+      const correctionNeeded = newRect.top - desiredOffset;
+      if (Math.abs(correctionNeeded) > 3) {
+        window.scrollBy({
+          top: correctionNeeded,
+          behavior: "auto"
+        });
+      }
+    }, 500);
+  };
+
+  // Small delay to ensure DOM is fully laid out
+  requestAnimationFrame(() => setTimeout(performScroll, 50));
 }
 
 
@@ -460,7 +477,8 @@ function showSection(name) {
   setActiveNav(name);
   maybeLoadSectionData(name);
 
-  const anchor = sec.querySelector(".sec-header") || sec;
+  // Target the h1.sec-title for better visibility, fallback to .sec-header then sec
+  const anchor = sec.querySelector(".sec-title") || sec.querySelector(".sec-header") || sec;
   scrollSectionAnchorIntoView(anchor);
 
   // Animate the active section when GSAP is available.
